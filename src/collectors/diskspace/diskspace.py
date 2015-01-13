@@ -173,6 +173,26 @@ class DiskSpaceCollector(diamond.collector.Collector):
 
             partitions = psutil.disk_partitions(False)
             for partition in partitions:
+                # Skip the filesystem if it is not in the list of valid
+                # filesystems
+                if partition.fstype not in self.filesystems:
+                    self.log.debug("Ignoring %s since it is of type %s which "
+                                   + " is not in the list of filesystems.",
+                                   partition.mount_point, partition.fs_type)
+                    continue
+
+                # Process the filters
+                if self.exclude_reg.search(partition.mount_point):
+                    self.log.debug("Ignoring %s since it is in the "
+                                   + "exclude_filter list.", partition.mount_point)
+                    continue
+
+                if (partition.mount_point.startswith('/dev')
+                    or partition.mount_point.startswith('/proc')
+                        or partition.mount_point.startswith('/sys')):
+                    continue
+
+
                 result[(0, len(result))] = {
                     'device': os.path.realpath(partition.device),
                     'mount_point': partition.mountpoint,
